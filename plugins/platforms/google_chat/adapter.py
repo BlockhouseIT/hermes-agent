@@ -2042,7 +2042,7 @@ class GoogleChatAdapter(BasePlatformAdapter):
         counter = [0]
 
         def _ph(value: str) -> str:
-            key = f"\x00GC{counter[0]}\x00"
+            key = f"\U000F0000{counter[0]}\U000F0000"
             counter[0] += 1
             placeholders[key] = value
             return key
@@ -2092,7 +2092,7 @@ class GoogleChatAdapter(BasePlatformAdapter):
         text = re.sub(r"  +", " ", text)
 
         # Restore protected regions.
-        for key, value in placeholders.items():
+        for key, value in reversed(list(placeholders.items())):
             text = text.replace(key, value)
 
         return text
