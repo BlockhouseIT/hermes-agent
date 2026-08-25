@@ -2424,7 +2424,9 @@ class GoogleChatAdapter(BasePlatformAdapter):
         counter = [0]
 
         def _ph(value: str) -> str:
-            key = f"\x00GC{counter[0]}\x00"
+            # PUA delimiter: Google Chat's REST API strips \x00 from message
+            # payloads, which would leave the bare `GC{n}` visible in text.
+            key = f"\U000F0000{counter[0]}\U000F0000"
             counter[0] += 1
             placeholders[key] = value
             return key
@@ -2473,8 +2475,10 @@ class GoogleChatAdapter(BasePlatformAdapter):
         # Collapse double spaces left over from stripped chars.
         text = re.sub(r"  +", " ", text)
 
-        # Restore protected regions.
-        for key, value in placeholders.items():
+        # Restore protected regions, outermost first. Insertion order buries
+        # an inner placeholder (e.g. inline code) inside the outer one's
+        # stored value (e.g. bold), so the inner key never matches.
+        for key, value in reversed(list(placeholders.items())):
             text = text.replace(key, value)
 
         return text
