@@ -5443,6 +5443,9 @@ def run_conversation(
                 _is_transport_failure = classified.reason in {
                     FailoverReason.timeout,
                     FailoverReason.overloaded,
+                    # Blockhouse: Gemini free tier 500s are chronic; let
+                    # server_error join timeout/overloaded in the fallback set.
+                    FailoverReason.server_error,
                 }
                 # Z.AI Coding Plan GLM-5.2 overload 429s classify as
                 # `overloaded` (to spare the credential pool), but `overloaded`
@@ -5458,7 +5461,10 @@ def run_conversation(
                     max_retries = max(max_retries, zai_coding_overload_retry_ceiling())
                 _should_fallback = (
                     (is_rate_limited and _wrapped_output_cap_budget is None)
-                    or (_is_transport_failure and retry_count >= 2)
+                    # Blockhouse: eager failover on transport failures — free
+                    # Gemini tier throttles hard, don't burn retries before
+                    # switching to the fallback chain (restores 0.16 behavior).
+                    or (_is_transport_failure and retry_count >= 0)
                 )
                 if _should_fallback and agent._fallback_index < len(agent._fallback_chain):
                     # Don't eagerly fallback if credential pool rotation may
